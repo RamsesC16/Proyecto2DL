@@ -1,6 +1,6 @@
 `timescale 1 ns / 1 ns
 
-module DeBounce_tf();
+module module_DeBounce_tb();
     reg clk;
     reg n_reset;
     reg button_in;
@@ -8,7 +8,7 @@ module DeBounce_tf();
     wire DB_out;
 
 
-    DeBounce UUT (
+    module_DeBounce UUT (
         .clk(clk), 
         .n_reset(n_reset), 
         .button_in(button_in), 
@@ -17,7 +17,7 @@ module DeBounce_tf();
 
 
     initial begin
-			$display ($time, " << Starting the Simulation >> ");
+			$display ($time, " << Starting Simulation >> ");
             clk = 1'b0;
             n_reset = 1'b0;
 			#200 n_reset = 1'b1;     
@@ -62,10 +62,9 @@ module DeBounce_tf();
 
 
     initial begin
-        $dumpfile("DeBounce_tf.vcd"); 
-        $dumpvars(0, DeBounce_tf); 
+        $dumpfile("module_DeBounce_tf.vcd"); 
+        $dumpvars(0, module_DeBounce_tf); 
     end
-
 
 
 endmodule 
