@@ -6,7 +6,7 @@ FAMILY = GW1N-9C
 DEVICE = GW1NR-LV9QN88PC6/I5
 
 #Nombre del proyecto... Acá ponen el nombre que deseen.
-PROYECT = spi_lcd
+PROYECT = CALCULADORA
 
 #Fuentes de diseno
 SOURCES := $(wildcard ../design/*.v ../design/*.sv) #Todas las fuentes .v o .sv que estan en design
@@ -15,18 +15,18 @@ SOURCES := $(wildcard ../design/*.v ../design/*.sv) #Todas las fuentes .v o .sv 
 
 #Fuente de simulacion
 #aca va el testbench que quieran simular
-TESTBENCH = ../sim/module_spi_lcd_tb.sv
+TESTBENCH = ../sim/module_top_tb.sv
 
 # Constraints para el proyecto
 #aca va el archivo de constraints del proyecto
-CONSTRAINTS = ../constr/module_spi_lcd.cst
+CONSTRAINTS = ../constr/Conts-Led-Ports.cst
 
 #el top se indica sin la extension .v, esto hace referencia al nombre que le pusieron al módulo y no al archivo en si.
-TOP_DESIGN = module_spi_lcd   
-TOP_TB     = module_spi_lcd_tb
+TOP_DESIGN =module_top
+TOP_TB     =module_top_tb
 
 #nombre del vcd que va a generar el tb
-VCD_FILE = module_spi_lcd_tb.vcd
+VCD_FILE = module_top_tb.vcd
 
 
 all: synth pnr bitstream load
@@ -40,7 +40,7 @@ synth: ${SOURCES}
 # Place and Route
 pnr: ${PROYECT}.json
 	@echo "Ejecutando el pnr..."
-	@nextpnr-gowin --json ${PROYECT}.json --write ${PROYECT}_pnr.json --freq 27 --device ${DEVICE} --family ${FAMILY} --cst ${CONSTRAINTS} > pnr_${BOARD}.log 2>&1
+	@nextpnr-gowin --json ${PROYECT}.json --write ${PROYECT}_pnr.json --freq 27 --device ${DEVICE} --family ${FAMILY} --cst ${CONSTRAINTS} > pnr_${BOARD}.log 2>&1 
 	@echo "COMPLETADO"
 
 # Generar el Bitstream
@@ -48,7 +48,7 @@ bitstream: ${PROYECT}_pnr.json
 	@echo "Generando ${PROYECT}_${BOARD}.fs"
 	@gowin_pack -d ${FAMILY} -o ${PROYECT}_${BOARD}.fs ${PROYECT}_pnr.json
 	@echo "COMPLETADO"
-	
+		
 #Generar vcd con icarus verilog
 test: ${SOURCES} ${TESTBENCH}
 	@iverilog -o ${PROYECT}_test.o -s ${TOP_TB} -g2005-sv ${TESTBENCH} ${SOURCES}
