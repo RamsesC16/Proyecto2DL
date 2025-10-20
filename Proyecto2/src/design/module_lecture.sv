@@ -1,118 +1,86 @@
-`timescale 1 ns / 1 ns
-
+`timescale 1ns/1ns
 module module_lecture (
-    input logic clk,
-    input logic n_reset,
-    input logic [3:0] filas_raw,        // Entradas directas desde las filas del teclado
-    output logic [3:0] columnas,
-    output logic [3:0] sample           // Salidas debouneada
+    input  logic clk,
+    input  logic n_reset,
+    input  logic [3:0] filas_raw,   // entradas del keypad
+    output logic [3:0] columnas,    // salidas que escanean columnas (one-hot)
+    output logic [3:0] sample       // tecla codificada (4 bits) o cero
 );
 
-    // Salidas del debouncer 
-    logic [3:0] columna_presionada0; //4 columna_presionada para un trucazo mistico
-    logic [3:0] columna_presionada1;
-    logic [3:0] columna_presionada2;
-    logic [3:0] columna_presionada3;
-    logic [3:0] columna_presionada_total;
-    logic [3:0] filas_db; // Muestreo de filas sin rebote
+    // Scanning parameters
+    parameter int CLK_HZ = 27_000_000;
+    parameter int COL_SCAN_HZ = 1000; // cuantas columnas por segundo (ajusta)
+    localparam int CYCLES_PER_STEP = CLK_HZ / (COL_SCAN_HZ * 4);
 
+    logic [$clog2(CYCLES_PER_STEP+1)-1:0] cnt;
+    logic [1:0] cur_col;
+    logic [3:0] filas_db;       // suponiendo que ya tienes un debouncer que genera esto
+    // (si tu DeBounce.sv produce filas_db por columna, integra esa lógica aquí)
 
+    // simple contador para cambiar la columna activa
+    always_ff @(posedge clk or negedge n_reset) begin
+        if (!n_reset) begin
+            cnt <= 0;
+            cur_col <= 0;
+        end else begin
+            if (cnt >= CYCLES_PER_STEP-1) begin
+                cnt <= 0;
+                cur_col <= cur_col + 1;
+            end else begin
+                cnt <= cnt + 1;
+            end
+        end
+    end
 
-    columnas_fsm fsm (
-        .clk(clk),
-        .columnas(columnas)
-    );
-
-    module_DeBounce db0 (
-        .clk(clk),
-        .n_reset(n_reset),
-        .button_in(filas_raw[0]),
-        .columnas(columnas),
-        .DB_out(filas_db[0]),
-        .columna_presionada(columna_presionada0)
-    );
- 
-    module_DeBounce db1 (
-        .clk(clk),
-        .n_reset(n_reset),
-        .button_in(filas_raw[1]),
-        .columnas(columnas),
-        .DB_out(filas_db[1]),
-        .columna_presionada(columna_presionada1)
-    );
-
-    module_DeBounce db2 (
-        .clk(clk),
-        .n_reset(n_reset),
-        .button_in(filas_raw[2]),
-        .columnas(columnas),
-        .DB_out(filas_db[2]),
-        .columna_presionada(columna_presionada2)
-    );
-
-    module_DeBounce db3 (
-        .clk(clk),
-        .n_reset(n_reset),
-        .button_in(filas_raw[3]),
-        .columnas(columnas),
-        .DB_out(filas_db[3]),
-        .columna_presionada(columna_presionada3)
-    );
-
- 
-    assign columna_presionada_total = columna_presionada0 | columna_presionada1 | columna_presionada2 | columna_presionada3; // Unir las columnas presionadas
-
-    always @(posedge clk ) begin
-        
-        case({columna_presionada_total, filas_db})
-            8'b1000_1000 : sample <= 4'b0001; // columna 0, fila 0 = 1
-            8'b0100_1000 : sample <= 4'b0010; // columna 1, fila 0 = 2
-            8'b0010_1000 : sample <= 4'b0011; // columna 2, fila 0 = 3
-            8'b0001_1000 : sample <= 4'b1010; // columna 3, fila 0 = 10 A
-
-            8'b1000_0100 : sample <= 4'b0100; // columna 0, fila 1 = 4
-            8'b0100_0100 : sample <= 4'b0101; // columna 1, fila 1 = 5
-            8'b0010_0100 : sample <= 4'b0110; // columna 2, fila 1 = 6
-            8'b0001_0100 : sample <= 4'b1011; // columna 3, fila 1 = 11 B
-
-            8'b1000_0010 : sample <= 4'b0111; // columna 0, fila 2 = 7
-            8'b0100_0010 : sample <= 4'b1000; // columna 1, fila 2 = 8
-            8'b0010_0010 : sample <= 4'b1001; // columna 2, fila 2 = 9
-            8'b0001_0010 : sample <= 4'b1100; // columna 3, fila 2 = 12 C
-
-            8'b1000_0001 : sample <= 4'b1101; // columna 0, fila 3 = 13 * D
-            8'b0100_0001 : sample <= 4'b0000; // columna 1, fila 3 = 0
-            8'b0010_0001 : sample <= 4'b1110; // columna 2, fila 3 = # 14 E
-            //8'b0001_0001 : key_pressed = 4'b1111; // columna 3, fila 3 = 15 F (Tecla D)
-            default: sample <= 4'b1111; // Si no hay coincidencia, salida por defecto
+    // generar señales one-hot para columnas (activo alto)
+    always_comb begin
+        case (cur_col)
+            2'd0: columnas = 4'b0001;
+            2'd1: columnas = 4'b0010;
+            2'd2: columnas = 4'b0100;
+            2'd3: columnas = 4'b1000;
+            default: columnas = 4'b0001;
         endcase
     end
 
-endmodule
- 
+    // Debounce: si ya tienes un DeBounce por fila/columna integra aquí
+    // Para ejemplo simple, usamos directamente filas_raw (no ideal)
+    assign filas_db = filas_raw; // reemplaza por la salida de tu debouncer
 
-
-module columnas_fsm(
-    input  logic clk,
-    output logic [3:0] columnas
-);
-    parameter int N = 19; // Bits del contador → controla el tiempo de espera (2^N ciclos)
-    logic [N-1:0] count = 19'd0;
-
-    always_ff @(posedge clk) begin
-        if (count[N-1]) begin //19'011111111111111111111
-            count <= '0; // Reiniciar contador al cambiar de estado
-
-            // Cambiar de columna
-            case (columnas)
-                4'b1000: columnas <= 4'b0100;
-                4'b0100: columnas <= 4'b0010;
-                4'b0010: columnas <= 4'b0001;
-                4'b0001: columnas <= 4'b1000;
-                default: columnas <= 4'b1000;
-            endcase
+    // Mapear {columna_activa, filas_db} a un valor 'sample'
+    // IMPORTANTE: ajustar los bits si tus niveles son activos bajos
+    always_ff @(posedge clk or negedge n_reset) begin
+        if (!n_reset) begin
+            sample <= 4'b0000;
         end else begin
-            count <= count + 1;
+            unique case ({columnas, filas_db})
+                // columna 0 (0001):
+                8'b0001_0001: sample <= 4'h7; // ejemplo: fila0 en columna0 => '7' (ajusta)
+                8'b0001_0010: sample <= 4'h4;
+                8'b0001_0100: sample <= 4'h1;
+                8'b0001_1000: sample <= 4'hE; // '*' por ejemplo
+
+                // columna 1 (0010):
+                8'b0010_0001: sample <= 4'h8;
+                8'b0010_0010: sample <= 4'h5;
+                8'b0010_0100: sample <= 4'h2;
+                8'b0010_1000: sample <= 4'h0;
+
+                // columna 2 (0100):
+                8'b0100_0001: sample <= 4'h9;
+                8'b0100_0010: sample <= 4'h6;
+                8'b0100_0100: sample <= 4'h3;
+                8'b0100_1000: sample <= 4'hF; // '#'
+
+                // columna 3 (1000):
+                8'b1000_0001: sample <= 4'hA; // A,B,C,D u otro mapeo
+                8'b1000_0010: sample <= 4'hB;
+                8'b1000_0100: sample <= 4'hC;
+                8'b1000_1000: sample <= 4'hD;
+
+                default: sample <= 4'b0000;
+            endcase
         end
     end
+
 endmodule

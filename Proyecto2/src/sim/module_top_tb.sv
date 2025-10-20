@@ -1,20 +1,19 @@
 `timescale 1ns/1ps
-
 module module_top_tb;
 
-    // Declaración de entradas
-    logic clk;                   // Reloj 27 MHz
-    logic [3:0] filas_raw;       // Entradas del teclado
+    // ==============================
+    // Declaración de señales
+    // ==============================
+    logic clk;                    // reloj de 27 MHz
+    logic [3:0] filas_raw;        // entradas del teclado
+    logic [6:0] d;                // segmentos del display
+    logic [3:0] a;                // control de dígitos del display
+    logic [3:0] columnas;         // salidas hacia las columnas del teclado
+    logic [3:0] led;              // leds de depuración
 
-    // Declaración de salidas
-    logic [6:0] d;               // Segmentos del display
-    logic [3:0] a;               // Control de los segmentos
-    logic [3:0] columnas;        // Salida FSM de columnas
-    logic [3:0] led;             // Señal de debug
-
-    ////////////////////////////
-
-    // Instanciación del módulo superior
+    // ==============================
+    // Instanciación del módulo top
+    // ==============================
     module_top uut (
         .clk(clk),
         .filas_raw(filas_raw),
@@ -24,30 +23,46 @@ module module_top_tb;
         .led(led)
     );
 
-    ////////////////////////////
-
+    // ==============================
     // Generador de reloj
-    always begin
-        #18.5 clk = ~clk;  // 27 MHz => periodo 37 ns
-    end
+    // ==============================
+    always #18.5 clk = ~clk; // 27 MHz → periodo de 37 ns
 
+    // ==============================
+    // Bloque inicial
+    // ==============================
     initial begin
+        // Valores iniciales
         clk = 0;
         filas_raw = 4'b0000;
 
-        // Pruebas simples: simular cambios en filas_raw
-        $monitor("t=%0t | filas_raw=%b | columnas=%b | display=%b | led=%b",
-                 $time, filas_raw, columnas, d, led);
+        // Mensaje de cabecera
+        $display("Tiempo(ns) | filas_raw | columnas | display | a | led");
 
-        #100 filas_raw = 4'b0001;
-        #100 filas_raw = 4'b0010;
-        #100 filas_raw = 4'b0100;
-        #100 filas_raw = 4'b1000;
+        // Monitoreo continuo
+        $monitor("%0t | %b | %b | %b | %b | %b", $time, filas_raw, columnas, d, a, led);
 
-        #5000 $finish;
+        // ==============================
+        // Estímulos de prueba
+        // ==============================
+        #100_000; filas_raw = 4'b0001;  // Presiona fila 0
+        #100_000; filas_raw = 4'b0010;  // Presiona fila 1
+        #100_000; filas_raw = 4'b0100;  // Presiona fila 2
+        #100_000; filas_raw = 4'b1000;  // Presiona fila 3
+        #100_000; filas_raw = 4'b0000;  // Suelta todas
+        #200_000; filas_raw = 4'b0101;  // combinación aleatoria
+        #100_000; filas_raw = 4'b0000;  // vuelve a reposo
+
+        // ==============================
+        // Fin de simulación
+        // ==============================
+        #100_000;
+        $finish;
     end
 
-    // Generación del archivo VCD
+    // ==============================
+    // Dumpfile para GTKWave
+    // ==============================
     initial begin
         $dumpfile("module_top_tb.vcd");
         $dumpvars(0, module_top_tb);
