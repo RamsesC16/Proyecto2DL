@@ -8,27 +8,28 @@ DEVICE = GW1NR-LV9QN88PC6/I5
 #Nombre del proyecto... Acá ponen el nombre que deseen.
 PROYECT = CALCULADORA
 
-#Fuentes de diseno
-SOURCES := $(wildcard ../design/*.v ../design/*.sv) #Todas las fuentes .v o .sv que estan en design
-#Si quieren indicarlas una a una, pueden hacerlo como en este ejemplo:
-#SOURCES = ../design/module_top_deco_gray.v ../design/module_input_deco_gray.v 
+# ==== Directorios ====
+SRC_DIR    = ../design
+SIM_DIR    = ../sim
+CONSTR_DIR = ../constr
 
-#Fuente de simulacion
-#aca va el testbench que quieran simular
-TESTBENCH = ../sim/module_suma_tb.sv
+# ==== Fuentes de diseño ====
+SOURCES := $(wildcard $(SRC_DIR)/*.v $(SRC_DIR)/*.sv)
 
-# Constraints para el proyecto
-#aca va el archivo de constraints del proyecto
+
+# ==== Fuente de simulación ====
+# (Se sobrescribe desde la terminal con: make test TESTBENCH=../sim/module_codi_tb.sv TOP_TB=module_codi_tb VCD_FILE=module_codi_tb.vcd)
+TESTBENCH ?= ../sim/module_disp_controller_tb.sv
+TOP_TB    ?= module_disp_controller_tb
+VCD_FILE  ?= module_disp_controller_tb.vcd
+
+# ==== Constraints ====
 CONSTRAINTS = ../constr/Conts-Led-Ports.cst
 
-#el top se indica sin la extension .v, esto hace referencia al nombre que le pusieron al módulo y no al archivo en si.
-TOP_DESIGN =module_top
-TOP_TB     =module_suma_tb
+# ==== Top design (nombre del módulo superior) ====
+TOP_DESIGN = module_top
 
-#nombre del vcd que va a generar el tb
-VCD_FILE = module_suma_tb.vcd
-
-
+# ==== Targets principales ====
 all: synth pnr bitstream load
 
 # Synthesis
