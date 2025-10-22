@@ -1,109 +1,84 @@
 `timescale 1ns/1ps
 
-module module_lecture #(
-    parameter SCAN_CYCLES       = 50,   // REDUCIDO para escaneo más rápido
-    parameter DEBOUNCE_CYCLES   = 100   // REDUCIDO para menos debounce
-)(
-    input         clk,
-    input         rst_n,
-    input  [3:0]  cols_in,   // entradas de columnas (pull-ups en HW, activo 0)
-    output [3:0]  rows_out,  // filas a manejar (activas low)
-    output [3:0]  key_code,  // código de tecla (0..15)
-    output        key_valid, // nivel debounced (alguna tecla presionada)
-    output        key_pulse  // one-shot al detectarse 0->1 (prioritario)
+module module_lecture(
+    input        clk,
+    input        n_reset,
+    input  [3:0] filas_raw,
+    output [3:0] columnas,
+    output [3:0] sample
 );
 
-    // sincronizador 2 etapas para las columnas
-    reg [3:0] col_sync0, col_sync1;
-    always @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            col_sync0 <= 4'hF;
-            col_sync1 <= 4'hF;
-        end else begin
-            col_sync0 <= cols_in;
-            col_sync1 <= col_sync0;
-        end
-    end
+    reg [16:0] counter = 0;
+    reg [1:0] col_index = 0;
+    reg [3:0] columnas_reg = 4'b0001;
+    reg [3:0] sample_reg = 4'h0;
+    reg [3:0] last_tecla = 4'h0;
+    reg [9:0] same_count = 0;
 
-    // escaneo de filas - MÁS RÁPIDO
-    reg [15:0] scan_cnt;
-    reg [1:0] row_idx;
-    
-    always @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            scan_cnt <= 0;
-            row_idx  <= 0;
+    always @(posedge clk or negedge n_reset) begin
+        if (!n_reset) begin
+            counter <= 0;
+            col_index <= 0;
+            columnas_reg <= 4'b0001;
+            sample_reg <= 4'h0;
+            last_tecla <= 4'h0;
+            same_count <= 0;
         end else begin
-            if (scan_cnt >= SCAN_CYCLES - 1) begin
-                scan_cnt <= 0;
-                row_idx  <= row_idx + 1;
+            counter <= counter + 1;
+            
+            if (counter[16]) begin
+                counter <= 0;
+                col_index <= col_index + 1;
+                
+                case (col_index)
+                    2'd0: columnas_reg <= 4'b0001;
+                    2'd1: columnas_reg <= 4'b0010;
+                    2'd2: columnas_reg <= 4'b0100;
+                    2'd3: columnas_reg <= 4'b1000;
+                endcase
+            end
+            
+            // MAPEO ORIGINAL EXACTO (de tu versión que funcionaba)
+            if (filas_raw != 4'b1111) begin
+                case ({columnas_reg, filas_raw})
+                    // COLUMNA 1
+                    8'b0001_1110: if (last_tecla != 4'h2) begin last_tecla <= 4'h2; same_count <= 0; end
+                    8'b0001_1101: if (last_tecla != 4'h5) begin last_tecla <= 4'h5; same_count <= 0; end
+                    8'b0001_1011: if (last_tecla != 4'h8) begin last_tecla <= 4'h8; same_count <= 0; end
+                    8'b0001_0111: if (last_tecla != 4'h0) begin last_tecla <= 4'h0; same_count <= 0; end
+
+                    // COLUMNA 2
+                    8'b0010_1110: if (last_tecla != 4'h3) begin last_tecla <= 4'h3; same_count <= 0; end
+                    8'b0010_1101: if (last_tecla != 4'h6) begin last_tecla <= 4'h6; same_count <= 0; end
+                    8'b0010_1011: if (last_tecla != 4'h9) begin last_tecla <= 4'h9; same_count <= 0; end
+                    8'b0010_0111: if (last_tecla != 4'hF) begin last_tecla <= 4'hF; same_count <= 0; end
+
+                    // COLUMNA 3
+                    8'b0100_1110: if (last_tecla != 4'h1) begin last_tecla <= 4'h1; same_count <= 0; end
+                    8'b0100_1101: if (last_tecla != 4'h4) begin last_tecla <= 4'h4; same_count <= 0; end
+                    8'b0100_1011: if (last_tecla != 4'h7) begin last_tecla <= 4'h7; same_count <= 0; end
+                    8'b0100_0111: if (last_tecla != 4'hE) begin last_tecla <= 4'hE; same_count <= 0; end
+
+                    // COLUMNA 4
+                    8'b1000_1110: if (last_tecla != 4'hA) begin last_tecla <= 4'hA; same_count <= 0; end
+                    8'b1000_1101: if (last_tecla != 4'hB) begin last_tecla <= 4'hB; same_count <= 0; end
+                    8'b1000_1011: if (last_tecla != 4'hC) begin last_tecla <= 4'hC; same_count <= 0; end
+                    8'b1000_0111: if (last_tecla != 4'hD) begin last_tecla <= 4'hD; same_count <= 0; end
+                endcase
+                
+                if (same_count < 10'h3FF) begin
+                    same_count <= same_count + 1;
+                end else begin
+                    sample_reg <= last_tecla;
+                end
             end else begin
-                scan_cnt <= scan_cnt + 1;
+                same_count <= 0;
+                last_tecla <= 4'h0;
             end
         end
     end
 
-    // filas activas (one-hot, active low)
-    reg [3:0] rows_out_reg;
-    always @(*) begin
-        case (row_idx)
-            2'd0: rows_out_reg = 4'b1110;
-            2'd1: rows_out_reg = 4'b1101;
-            2'd2: rows_out_reg = 4'b1011;
-            2'd3: rows_out_reg = 4'b0111;
-            default: rows_out_reg = 4'b1111;
-        endcase
-    end
-    
-    assign rows_out = rows_out_reg;
-
-    // Detección de tecla actual - MÁS SIMPLE
-    reg [3:0] current_key;
-    reg key_detected;
-    
-    always @(*) begin
-        if (col_sync1 != 4'hF) begin
-            casez (col_sync1)
-                4'b???0: current_key = {row_idx, 2'd0};
-                4'b??0?: current_key = {row_idx, 2'd1};
-                4'b?0??: current_key = {row_idx, 2'd2};
-                4'b0???: current_key = {row_idx, 2'd3};
-                default: current_key = 4'd0;
-            endcase
-            key_detected = 1'b1;
-        end else begin
-            current_key = 4'd0;
-            key_detected = 1'b0;
-        end
-    end
-
-    // Debounce simple - MÁS RÁPIDO
-    reg [DEBOUNCE_CYCLES-1:0] debounce_shift;
-    reg key_pulse_reg;
-    reg [3:0] last_key;
-    
-    always @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            debounce_shift <= 0;
-            last_key <= 0;
-            key_pulse_reg <= 0;
-        end else begin
-            key_pulse_reg <= 0;
-            
-            // Shift register para debounce
-            debounce_shift <= {debounce_shift[DEBOUNCE_CYCLES-2:0], key_detected};
-            
-            // Detección inmediata para pruebas
-            if (key_detected && (current_key != last_key)) begin
-                last_key <= current_key;
-                key_pulse_reg <= 1'b1;
-            end
-        end
-    end
-
-    // Salidas
-    assign key_pulse = key_pulse_reg;
-    assign key_valid = |debounce_shift; // Cualquier tecla detectada
-    assign key_code = last_key;
+    assign columnas = columnas_reg;
+    assign sample = sample_reg;
 
 endmodule

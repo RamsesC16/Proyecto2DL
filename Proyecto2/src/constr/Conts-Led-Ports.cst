@@ -14,16 +14,16 @@ IO_LOC  "columnas[3]" 73;
 IO_PORT "columnas[3]" IO_TYPE=LVCMOS33;
 
 IO_LOC  "filas_raw[0]" 32;
-IO_PORT "filas_raw[0]" IO_TYPE=LVCMOS33 PULL_MODE=DOWN;
+IO_PORT "filas_raw[0]" IO_TYPE=LVCMOS33 PULL_MODE=UP;
 
 IO_LOC  "filas_raw[1]" 31;
-IO_PORT "filas_raw[1]" IO_TYPE=LVCMOS33 PULL_MODE=DOWN;
+IO_PORT "filas_raw[1]" IO_TYPE=LVCMOS33 PULL_MODE=UP;
 
 IO_LOC  "filas_raw[2]" 49;
-IO_PORT "filas_raw[2]" IO_TYPE=LVCMOS33 PULL_MODE=DOWN;
+IO_PORT "filas_raw[2]" IO_TYPE=LVCMOS33 PULL_MODE=UP;
 
 IO_LOC  "filas_raw[3]" 48;
-IO_PORT "filas_raw[3]" IO_TYPE=LVCMOS33 PULL_MODE=DOWN;
+IO_PORT "filas_raw[3]" IO_TYPE=LVCMOS33 PULL_MODE=UP;
 
 IO_LOC  "a[2]" 69;
 IO_PORT "a[2]" IO_TYPE=LVCMOS33;
