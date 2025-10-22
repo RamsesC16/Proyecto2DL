@@ -81,6 +81,15 @@ module module_DeBounce #(
 
 endmodule
 Testbench:
+TEST MODULO DEBOUNCE
+
+VCD info: dumpfile module_DeBounce_tb.vcd opened for output.
+[55000] START tests
+[995000] btn_pulse asserted
+[1465000] btn_pulse asserted
+[1985000] btn_pulse asserted
+[2235000] END tests
+../sim/module_DeBounce_tb.sv:79: $finish called at 2235000 (1ps)
 ## 3.2 Módulo disp_controller
 Funcionamiento: El módulo disp_controller se encarga de manejar los cuatro displays de siete segmentos que muestran los valores del proyecto. Como la FPGA no puede activar todos los dígitos al mismo tiempo, utiliza multiplexación, encendiendo cada display de forma alternada a gran velocidad para que el ojo humano perciba que todos están encendidos simultáneamente. Toma un dato de 16 bits y, mediante un contador interno, selecciona cuál de los cuatro dígitos mostrar en cada ciclo. Ese valor se envía a un decodificador de siete segmentos, que convierte el número binario en la combinación correcta de segmentos encendidos para formar el dígito correspondiente. El módulo activa el ánodo del display correspondiente (activo bajo) y entrega la señal de segmentos adecuada, logrando que los cuatro dígitos se muestren correctamente y de manera estable.
 Código: 
@@ -162,6 +171,12 @@ module module_disp_controller #(
 
 endmodule
 Testbench:
+TEST MODULO DISP_CONTROLLER
+
+Segmentos: 1001111, Anodos: 1101
+Segmentos: 1111101, Anodos: 1011
+Test completado.
+../sim/module_disp_controller_tb.sv:44: $finish called at 2020000 (1ps)
 ## 3.3 Módulo disp_dec
 Funcionamiento: El módulo disp_dec se encarga de convertir un número de 4 bits en la señal correspondiente para un display de siete segmentos. Toma la entrada binaria y, mediante una estructura case, activa los segmentos correctos para formar el dígito decimal correspondiente. Cada combinación de segmentos representa un número del 0 al 9, mientras que cualquier otro valor apaga todos los segmentos. De esta manera, este módulo actúa como un decodificador que traduce valores binarios en la representación visual adecuada para los displays de siete segmentos.
 Código:
@@ -187,7 +202,6 @@ module module_disp_dec(
         endcase
     end
 endmodule
-Testbench:
 ## 3.4 Módulo lecture
 Funcionamiento: El módulo lecture permite la lectura confiable de un teclado hexadecimal, realizando un barrido secuencial de las columnas y registrando las filas activas. Cada tecla presionada se guarda temporalmente y solo se considera válida después de mantenerse estable durante varios ciclos, filtrando posibles rebotes. El valor validado se entrega en la salida sample, mientras que la señal de la columna activa se envía a la salida columnas, garantizando que el sistema pueda procesar correctamente los datos ingresados.
 Código:
@@ -276,6 +290,111 @@ module module_lecture(
 
 endmodule 
 Testbench:
+===========================================
+=== TESTBENCH MODULE_LECTURE (TECLADO) ===
+===========================================
+--- [19000] Columna activa: 0001
+[1100000] Reset completado
+  >> Columnas: 0001 | Filas: 1111 | Sample: 0x0
+
+=== PRUEBA 1: Teclas num├⌐ricas 1-9 ===
+
+[1100000] Tecla presionada: codigo 0x2 (Fila=0, Columna=0)
+  >> Columnas: 0001 | Filas: 1111 | Sample: 0x0
+[4854811000] Tecla presionada: codigo 0x5 (Fila=0, Columna=1)
+--- [4854848000] Columna activa: 0010
+  >> Columnas: 0010 | Filas: 1111 | Sample: 0x0
+[7282171000] Tecla presionada: codigo 0x8 (Fila=0, Columna=2)
+--- [7282208000] Columna activa: 0100
+  >> Columnas: 0100 | Filas: 1111 | Sample: 0x0
+--- [9709567000] Columna activa: 1000
+[12136890000] Tecla presionada: codigo 0x3 (Fila=1, Columna=0)
+--- [12136927000] Columna activa: 0001
+  >> Columnas: 0001 | Filas: 1111 | Sample: 0x0
+[14564249000] Tecla presionada: codigo 0x6 (Fila=1, Columna=1)
+--- [14564286000] Columna activa: 0010
+  >> Columnas: 0010 | Filas: 1111 | Sample: 0x0
+[16991608000] Tecla presionada: codigo 0x9 (Fila=1, Columna=2)
+--- [16991645000] Columna activa: 0100
+  >> Columnas: 0100 | Filas: 1111 | Sample: 0x0
+--- [19419005000] Columna activa: 1000
+[21846327000] Tecla presionada: codigo 0x1 (Fila=2, Columna=0)
+--- [21846364000] Columna activa: 0001
+  >> Columnas: 0001 | Filas: 1111 | Sample: 0x0
+[24273687000] Tecla presionada: codigo 0x4 (Fila=2, Columna=1)
+--- [24273724000] Columna activa: 0010
+  >> Columnas: 0010 | Filas: 1111 | Sample: 0x0
+[26701046000] Tecla presionada: codigo 0x7 (Fila=2, Columna=2)
+--- [26701083000] Columna activa: 0100
+  >> Columnas: 0100 | Filas: 1111 | Sample: 0x0
+
+=== PRUEBA 2: Tecla 0 y letras ===
+
+--- [29128443000] Columna activa: 1000
+--- [31555802000] Columna activa: 0001
+[33983124000] Tecla presionada: codigo 0x0 (Fila=3, Columna=1)
+--- [33983161000] Columna activa: 0010
+  >> Columnas: 0010 | Filas: 1111 | Sample: 0x0
+--- [36410521000] Columna activa: 0100
+[38837843000] Tecla presionada: codigo 0xA (Fila=0, Columna=3)
+--- [38837880000] Columna activa: 1000
+  >> Columnas: 1000 | Filas: 1111 | Sample: 0x0
+[38858843000] Tecla presionada: codigo 0xF (Fila=1, Columna=3)
+  >> Columnas: 1000 | Filas: 1111 | Sample: 0x0
+[38879843000] Tecla presionada: codigo 0xE (Fila=2, Columna=3)
+  >> Columnas: 1000 | Filas: 1111 | Sample: 0x0
+[38900843000] Tecla presionada: codigo 0xD (Fila=3, Columna=3)
+  >> Columnas: 1000 | Filas: 1111 | Sample: 0x0
+[41265202000] Tecla presionada: codigo 0xA (Fila=3, Columna=0)
+--- [41265240000] Columna activa: 0001
+  >> Columnas: 0001 | Filas: 1111 | Sample: 0x0
+--- [43692599000] Columna activa: 0010
+[46119921000] Tecla presionada: codigo 0xB (Fila=3, Columna=2)
+--- [46119958000] Columna activa: 0100
+  >> Columnas: 0100 | Filas: 1111 | Sample: 0x0
+
+=== PRUEBA 3: Debounce y teclas rapidas ===
+
+Presionando teclas rapidamente...
+--- [48547318000] Columna activa: 1000
+[50974640000] Tecla presionada:   1 rapida (Fila=0, Columna=0)
+--- [50974677000] Columna activa: 0001
+[53402000000] Tecla presionada:   2 rapida (Fila=0, Columna=1)
+--- [53402037000] Columna activa: 0010
+--- [55829396000] Columna activa: 0100
+--- [58256755000] Columna activa: 1000
+[60684078000] Tecla presionada: a otra vez (Fila=0, Columna=0)
+--- [60684115000] Columna activa: 0001
+
+=== PRUEBA 4: Tecla larga ===
+
+Tecla larga (5):
+--- [63111474000] Columna activa: 0010
+>>> [63149401000] TECLA DETECTADA: 0x6
+  >> Columnas: 0010 | Filas: 1101 | Sample: 0x6
+  >> Columnas: 0010 | Filas: 1101 | Sample: 0x6
+
+=== RESUMEN DE MAPEO ===
+
+Tecla Fisica -> Codigo Salida
+ 1 -> 0x2
+ 2 -> 0x5
+ 3 -> 0x8
+ 4 -> 0x3
+ 5 -> 0x6
+ 6 -> 0x9
+ 7 -> 0x1
+ 8 -> 0x4
+ 9 -> 0x7
+ 0 -> 0x0
+ A -> 0xA
+ B -> 0xF
+ C -> 0xE
+ D -> 0xD
+ * -> 0xA
+ # -> 0xB
+
+=== TEST COMPLETADO ===
 ## 3.5 Módulo mux
 Funcionamiento: El módulo mux se encarga de seleccionar cuál de los dígitos de un número de 16 bits será enviado a la salida de 4 bits, según la señal de control proveniente del display controller. Esta selección permite mostrar correctamente las unidades, decenas, centenas o miles en el display de 7 segmentos, asegurando que en cada ciclo solo se active el dígito correspondiente y se mantenga la sincronización con la multiplexación de los displays.
 Código: 
@@ -302,7 +421,7 @@ module module_mux(
 
     
 endmodule
-Testbench:
+
 ## 3.6 Módulo suma
 Funcionamiento: El módulo suma está diseñado para acumular y procesar los valores ingresados desde el teclado hexadecimal, construyendo números a partir de las teclas presionadas y realizando la operación de suma cuando se reciben las señales correspondientes. Cada dígito ingresado se multiplica por 10 y se suma al valor actual para formar números de varias cifras, mientras que las señales de operación (como suma o igual) permiten almacenar temporalmente los números y calcular el resultado final.
 Código: 
@@ -384,6 +503,17 @@ module module_suma #(
 
 endmodule
 Testbench:
+=== PRUEBA NUEVO MODULE_SUMA ===
+1. 15 + 27 = 42
+>>> RESULTADO CALCULADO:     0
+>>> RESULTADO CALCULADO:    42
+   Resultado:    42 (esperado: 42)
+
+2. CLEAR y 8 + 5 = 13
+>>> RESULTADO CALCULADO:     0
+>>> RESULTADO CALCULADO:    13
+   Resultado:    13 (esperado: 13)
+../sim/module_suma_tb.sv:71: $finish called at 635000 (1ps)
 ## 3.7 Módulo bin_to_bcd
 Funcionamiento: El módulo bin_to_bcd convierte un número binario de 12 bits en su equivalente en formato BCD de 16 bits, permitiendo representar hasta cuatro dígitos decimales. La conversión se realiza mediante un algoritmo de desplazamiento y suma (shift-and-add-3), donde se revisa cada nibble del BCD en construcción; si un nibble es mayor o igual a 5, se le suma 3 antes de desplazar los bits del número binario. Este proceso garantiza que cada grupo de 4 bits de la salida corresponda a un dígito decimal correcto, listo para ser mostrado en un display de 7 segmentos.
 Código: 
@@ -413,7 +543,7 @@ module module_bin_to_bcd (
     end
 
 endmodule
-Testbench:
+
 ## 3.8 Módulo input_controller
 Funcionamiento: El módulo input_controller se encarga de gestionar la captura de los números ingresados desde el teclado y controlar el flujo de la operación mediante una máquina de estados. Esta máquina tiene tres estados: STATE_A, donde se espera la entrada del primer número; STATE_B, donde se captura el segundo número; y STATE_CALCULATE, donde se habilita el cálculo de la suma. Los números se almacenan en registros internos al detectar un pulso válido de tecla, y las salidas numA y numB reflejan los valores capturados. Además, la señal calculate_en se activa únicamente en el estado de cálculo, mientras que state_leds proporciona una indicación visual del estado actual para depuración.
 Código: 
@@ -509,7 +639,7 @@ module module_input_controller(
     assign state_leds = current_state;
 
 endmodule
-Testbench:
+
 ## 3.9 Módulo top ("Sumador")
 Funcionamiento: Este módulo es el top que intenta realizar la suma de dos números ingresados desde un teclado hexadecimal y mostrar el resultado en un display de 7 segmentos. Integra todos los módulos necesarios: lectura de teclado, conversión de teclas a códigos, módulo de suma, conversión de binario a BCD y controlador de displays.
 Código: 
@@ -629,6 +759,43 @@ module module_top(
 endmodule
 Testbench:
 ## 3.8 Módulo Top ("Verificador de funcionamiento de displays")
+Descripción: Este módulo top tiene como finalidad comprobar el correcto funcionamiento tanto del teclado matricial como de los displays de 7 segmentos, mostrando en pantalla el número correspondiente a la tecla presionada. Para ello, el módulo module_lecture se encarga de escanear el teclado 4x4 activando sus columnas y detectando qué fila está siendo presionada, generando un valor binario de 4 bits (key_sample) que identifica la tecla. Dicho valor se amplía a 16 bits mediante la variable display_val, añadiendo ceros en las posiciones más significativas para que el controlador del display pueda manejarlo correctamente. Posteriormente, el módulo module_disp_controller recibe esta información y la muestra en los displays de 7 segmentos, gestionando la multiplexación de los ánodos y segmentos para que visualmente parezca que todos los dígitos están encendidos simultáneamente.
+Código: `timescale 1ns/1ps
+
+module module_top(
+    input  wire        clk,
+    output wire [3:0]  columnas,
+    input  wire [3:0]  filas_raw,
+    output wire [3:0]  a,
+    output wire [6:0]  d
+);
+
+    wire [3:0] key_sample;
+    
+    module_lecture u_lecture (
+        .clk(clk),
+        .n_reset(1'b1),
+        .filas_raw(filas_raw),
+        .columnas(columnas),
+        .sample(key_sample)
+    );
+
+    // Solo mostrar el código de tecla
+    reg [15:0] display_val;
+    
+    always @(*) begin
+        display_val = {12'h000, key_sample};
+    end
+
+    module_disp_controller u_display (
+        .clk(clk),.
+        .rst(1'b0),
+        .data(display_val),
+        .seg(d),
+        .an(a)
+    );
+
+endmodule
 ## 4. Ejercicios
 ## 4.1 Contadores Sincrónicos:  
 ## 4.2 Construcción de un cerrojo Set-Reset con compuertas NAND: 
