@@ -1,4 +1,3 @@
-// ...existing code...
 module module_suma #(
     parameter int RESULT_WIDTH = 14,    // bits for result (14 bits -> up to 16383), adjust if need >9999
     parameter int RESULT_MAX   = 10000  // decimal cap (e.g. 10000 => max displayable 0..9999)
@@ -98,4 +97,3 @@ module module_suma #(
     assign overflow     = overflow_reg;
 
 endmodule
-// ...existing code...

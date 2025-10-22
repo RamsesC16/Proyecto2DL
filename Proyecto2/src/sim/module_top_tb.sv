@@ -1,46 +1,47 @@
 `timescale 1ns/1ps
 
-module module_top_tb();
-    // Parámetros de simulación reducidos para acelerar la rotación
-    localparam int SIM_FREQ_HZ = 1_000_000; // 1 MHz clock en sim
-    localparam int SIM_REF_HZ  = 10;        // refresco muy bajo -> MAX_COUNT = 100000
-    localparam real CLK_PERIOD = 1e9 / SIM_FREQ_HZ;
-
-    reg clk = 0;
-    reg reset = 1;
-    wire [3:0] a;
-
-    // Clock
-    always #(CLK_PERIOD/2.0) clk = ~clk;
-
-    // DUT: instancia con parámetros pequeños para ver la rotación rápido
-    module_disp_controller #(
-        .FREQ_HZ(27_000_000),
-        .REFRESH_HZ(10_0000),
-        .INVERT_AN(1) // ajusta si tu placa usa activo-alto
-    ) dut (
+module module_top_tb;
+    logic clk;
+    logic [3:0] columnas;
+    logic [3:0] filas_raw;
+    logic [3:0] a;
+    logic [6:0] d;
+    logic [3:0] led;
+    
+    module_top uut (
         .clk(clk),
-        .reset(reset),
-        .a(a)
+        .columnas(columnas),
+        .filas_raw(filas_raw),
+        .a(a),
+        .d(d),
+        .led(led)
     );
-
-    integer i;
+    
+    always #18.519 clk = ~clk;
+    
     initial begin
-        $display("TB disp controller isolated start");
-        // Reset pulse (activo-alto)
-        reset = 1;
-        repeat(5) @(posedge clk);
-        reset = 0;
-        repeat(2) @(posedge clk);
-
-        $display("time(ns)    a");
-        // Monitorea durante suficientes ciclos para ver varios cambios
-        for (i = 0; i < 200000; i = i + 1) begin
-            @(posedge clk);
-            if ((i % 500) == 0) $display("%0t    %b", $time, a);
+        $display("TEST CON RESET FIX");
+        
+        // Inicialización
+        clk = 0;
+        columnas = 4'b1111;
+        
+        #50000;
+        $display("[%0t] Inicio - Filas: %b", $time, filas_raw);
+        
+        #100000;
+        $display("[%0t] Despues de 100us - Filas: %b", $time, filas_raw);
+        
+        #500000;
+        $display("[%0t] Despues de 500us - Filas: %b, Anodos: %b", $time, filas_raw, a);
+        
+        // Verificar si el reset funcionó
+        if (filas_raw != 4'b1111) begin
+            $display("✅ RESET FUNCIONA! Filas se escanean");
+        end else begin
+            $display("❌ Reset NO funciona");
         end
-
-        $display("Fin TB");
+        
         $finish;
     end
 endmodule

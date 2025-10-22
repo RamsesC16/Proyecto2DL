@@ -28,25 +28,25 @@ IO_PORT "filas_raw[3]" IO_TYPE=LVCMOS33 PULL_MODE=DOWN;
 IO_LOC  "a[2]" 69;
 IO_PORT "a[2]" IO_TYPE=LVCMOS33;
 
-IO_LOC  "d[0]" 26;
+IO_LOC  "d[0]" 40;
 IO_PORT "d[0]" IO_TYPE=LVCMOS33;
 
-IO_LOC  "d[1]" 35;
+IO_LOC  "d[1]" 51;
 IO_PORT "d[1]" IO_TYPE=LVCMOS33;
 
-IO_LOC  "d[2]" 36;
+IO_LOC  "d[2]" 25;
 IO_PORT "d[2]" IO_TYPE=LVCMOS33;
 
 IO_LOC  "d[3]" 39;
 IO_PORT "d[3]" IO_TYPE=LVCMOS33;
 
-IO_LOC  "d[4]" 25;
+IO_LOC  "d[4]" 26;
 IO_PORT "d[4]" IO_TYPE=LVCMOS33;
 
-IO_LOC  "d[5]" 51;
+IO_LOC  "d[5]" 35;
 IO_PORT "d[5]" IO_TYPE=LVCMOS33;
 
-IO_LOC  "d[6]" 40;
+IO_LOC  "d[6]" 36;
 IO_PORT "d[6]" IO_TYPE=LVCMOS33;
 
 IO_LOC  "a[0]" 57;

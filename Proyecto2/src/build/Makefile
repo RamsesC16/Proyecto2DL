@@ -19,9 +19,9 @@ SOURCES := $(wildcard $(SRC_DIR)/*.v $(SRC_DIR)/*.sv)
 
 # ==== Fuente de simulación ====
 # (Se sobrescribe desde la terminal con: make test TESTBENCH=../sim/module_codi_tb.sv TOP_TB=module_codi_tb VCD_FILE=module_codi_tb.vcd)
-TESTBENCH ?= ../sim/module_DeBounce_tb.sv
-TOP_TB    ?= module_DeBounce_tb
-VCD_FILE  ?= module_DeBounce_tb.vcd
+TESTBENCH ?= ../sim/module_top_tb.sv
+TOP_TB    ?= module_top_tb
+VCD_FILE  ?= module_top_tb.vcd
 
 # ==== Constraints ====
 CONSTRAINTS = ../constr/Conts-Led-Ports.cst
