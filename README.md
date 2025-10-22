@@ -757,7 +757,48 @@ module module_top(
     assign d = segments;
 
 endmodule
-Testbench:
+Testbench: ===========================================
+=== DEBUG DETALLADO SISTEMA ===
+===========================================
+[2000000000] Reset completado - Iniciando...
+
+=== PRUEBA: Tecla 5 en columna 1 ===
+
+[2000000000] PRESIONANDO: Tecla 5 (Fila=1, Columna=1)
+    Columnas actual: 0001
+    Filas actual: 1101
+[2500000000] LIBERANDO: Tecla 5
+
+=== PRUEBA: ADD en columna 3 ===
+
+[3000000000] PRESIONANDO: Tecla A (ADD) (Fila=0, Columna=3)
+    Columnas actual: 0001
+    Filas actual: 1110
+[3500000000] LIBERANDO: Tecla A (ADD)
+
+=== PRUEBA: Tecla 3 en columna 2 ===
+
+[4000000000] PRESIONANDO: Tecla 3 (Fila=0, Columna=2)
+    Columnas actual: 0001
+    Filas actual: 1110
+[4500000000] LIBERANDO: Tecla 3
+
+=== PRUEBA: EQUAL en columna 3 ===
+
+[5000000000] PRESIONANDO: Tecla B (EQUAL) (Fila=1, Columna=3)
+    Columnas actual: 0001
+    Filas actual: 1101
+[5500000000] LIBERANDO: Tecla B (EQUAL)
+
+=== ESTADO FINAL ===
+Resultado: 0
+Valido: 0
+Overflow: 0
+Key sample: 0x0
+Key pulse: 0
+
+=== DEBUG COMPLETADO ===
+../sim/module_top_tb.sv:218: $finish called at 8000000000 (1ps)
 ## 3.8 Módulo Top ("Verificador de funcionamiento de displays")
 Descripción: Este módulo top tiene como finalidad comprobar el correcto funcionamiento tanto del teclado matricial como de los displays de 7 segmentos, mostrando en pantalla el número correspondiente a la tecla presionada. Para ello, el módulo module_lecture se encarga de escanear el teclado 4x4 activando sus columnas y detectando qué fila está siendo presionada, generando un valor binario de 4 bits (key_sample) que identifica la tecla. Dicho valor se amplía a 16 bits mediante la variable display_val, añadiendo ceros en las posiciones más significativas para que el controlador del display pueda manejarlo correctamente. Posteriormente, el módulo module_disp_controller recibe esta información y la muestra en los displays de 7 segmentos, gestionando la multiplexación de los ánodos y segmentos para que visualmente parezca que todos los dígitos están encendidos simultáneamente.
 Código: `timescale 1ns/1ps
@@ -802,4 +843,34 @@ endmodule
 ## 5. Problemas encontrados durante la implementación:
 Durante la implementación del proyecto, se identificó que era necesario encontrar un equilibrio adecuado en el DeBouncer entre rigidez y sensibilidad. Si el DeBouncer era demasiado sensible, el rebote de las teclas provocaba que al presionar una tecla se registrara otra de manera incorrecta. Por otro lado, si se configuraba con demasiada rigidez, algunas pulsaciones no se registraban, impidiendo que el valor apareciera en los displays de 7 segmentos. Como resultado, en ciertas ocasiones al presionar algunas teclas se mostraban números incorrectos en los displays. Además, se presentó un segundo problema con el módulo de suma: aunque funcionaba correctamente en simulación a través del testbench, no fue posible implementarlo de manera física en la FPGA.
 ## 6. Análisis de Potencia: 
+=== module_top ===
+
+   Number of wires:               1284
+   Number of wire bits:           2739
+   Number of public wires:        1284
+   Number of public wire bits:    2739
+   Number of memories:               0
+   Number of memory bits:            0
+   Number of processes:              0
+   Number of cells:               1674
+     ALU                           300
+     DFF                             1
+     DFFC                           22
+     DFFCE                          60
+     DFFE                           24
+     DFFPE                           1
+     DFFR                           32
+     DFFRE                           2
+     GND                             1
+     IBUF                            5
+     LUT1                          462
+     LUT2                          149
+     LUT3                           52
+     LUT4                          144
+     MUX2_LUT5                     247
+     MUX2_LUT6                     109
+     MUX2_LUT7                      37
+     MUX2_LUT8                      10
+     OBUF                           15
+     VCC                             1
 ## 7. Bitácoras: 
