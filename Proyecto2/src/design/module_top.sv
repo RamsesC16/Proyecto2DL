@@ -9,7 +9,6 @@ module module_top(
 );
 
     wire [3:0] key_sample;
-    wire [3:0] key_code_para_suma;
     wire [13:0] resultado_suma;
     wire result_valid;
     wire result_pulse;
@@ -23,6 +22,10 @@ module module_top(
     reg rst_n;
     reg [23:0] reset_counter = 0;
     
+    // Detección de pulsos de teclas
+    reg [3:0] last_key_sample = 0;
+    reg key_pulse = 0;
+    
     always @(posedge clk) begin
         if (reset_counter < 24'hFFFFFF) begin
             reset_counter <= reset_counter + 1;
@@ -32,7 +35,23 @@ module module_top(
         end
     end
 
-    // Módulo lecture con mapeo original
+    // Detectar flanco de tecla para generar pulso
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            last_key_sample <= 0;
+            key_pulse <= 0;
+        end else begin
+            // Detectar cuando cambia la tecla (flanco de subida)
+            if (key_sample != 0 && key_sample != last_key_sample) begin
+                key_pulse <= 1'b1;
+            end else begin
+                key_pulse <= 1'b0;
+            end
+            last_key_sample <= key_sample;
+        end
+    end
+
+    // Módulo lecture (teclado)
     module_lecture u_lecture (
         .clk(clk),
         .n_reset(rst_n),
@@ -41,26 +60,30 @@ module module_top(
         .sample(key_sample)
     );
 
-    // CONVERSOR CORREGIDO - basado en tu observación
+    // CONVERSOR de teclas físicas a códigos del módulo suma
+    wire [3:0] key_code_para_suma;
     assign key_code_para_suma = 
-        (key_sample == 4'h2) ? 4'h1 : // Tecla física 1 → Dígito 1 (correcto)
-        (key_sample == 4'h5) ? 4'h2 : // Tecla física 2 → Dígito 2 (correcto)
-        (key_sample == 4'h8) ? 4'h6 : // Tecla física 3 → Dígito 6
-        (key_sample == 4'h3) ? 4'h1 : // Tecla física 4 → Dígito 1
-        (key_sample == 4'h6) ? 4'h5 : // Tecla física 5 → Dígito 5
-        (key_sample == 4'h9) ? 4'h6 : // Tecla física 6 → Dígito 6
-        (key_sample == 4'h1) ? 4'h7 : // Tecla física 7 → Dígito 7
-        (key_sample == 4'h4) ? 4'h8 : // Tecla física 8 → Dígito 8
-        (key_sample == 4'h7) ? 4'h9 : // Tecla física 9 → Dígito 9
-        (key_sample == 4'h0) ? 4'h0 : // Tecla física 0 → Dígito 0
-        key_sample; // Letras se mantienen igual
+        (key_sample == 4'h2) ? 4'h1 : // Tecla 1 física → Dígito 1
+        (key_sample == 4'h5) ? 4'h2 : // Tecla 2 física → Dígito 2
+        (key_sample == 4'h8) ? 4'h3 : // Tecla 3 física → Dígito 3
+        (key_sample == 4'h3) ? 4'h4 : // Tecla 4 física → Dígito 4
+        (key_sample == 4'h6) ? 4'h5 : // Tecla 5 física → Dígito 5
+        (key_sample == 4'h9) ? 4'h6 : // Tecla 6 física → Dígito 6
+        (key_sample == 4'h1) ? 4'h7 : // Tecla 7 física → Dígito 7
+        (key_sample == 4'h4) ? 4'h8 : // Tecla 8 física → Dígito 8
+        (key_sample == 4'h7) ? 4'h9 : // Tecla 9 física → Dígito 9
+        (key_sample == 4'h0) ? 4'h0 : // Tecla 0 física → Dígito 0
+        (key_sample == 4'hA) ? 4'd10 : // Tecla A → ADD
+        (key_sample == 4'hB) ? 4'd11 : // Tecla B → EQUAL
+        (key_sample == 4'hC) ? 4'd12 : // Tecla C → CLEAR
+        4'd15; // Otras teclas → ignorar
 
-    // Módulo suma
+    // NUEVO módulo suma funcional
     module_suma u_suma (
         .clk(clk),
         .rst_n(rst_n),
         .key_code(key_code_para_suma),
-        .key_pulse(1'b1),
+        .key_pulse(key_pulse),  // Usar detección real de pulsos
         .result(resultado_suma),
         .result_valid(result_valid),
         .result_pulse(result_pulse),

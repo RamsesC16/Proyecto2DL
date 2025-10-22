@@ -1,99 +1,77 @@
 module module_suma #(
-    parameter int RESULT_WIDTH = 14,    // bits for result (14 bits -> up to 16383), adjust if need >9999
-    parameter int RESULT_MAX   = 10000  // decimal cap (e.g. 10000 => max displayable 0..9999)
+    parameter RESULT_WIDTH = 14
 )(
-    input  logic                  clk,
-    input  logic                  rst_n,
-    input  logic [3:0]            key_code,   // 0..9 digits, 10=ADD,11=EQUAL,12=CLEAR
-    input  logic                  key_pulse,  // one-shot per key press (1 clk)
-    output logic [RESULT_WIDTH-1:0] result,    // current total (or last result)
-    output logic                  result_valid, // level: a result is available
-    output logic                  result_pulse, // one-shot when a result is produced (ADD/EQUAL)
-    output logic                  overflow     // high when overflow occurred (saturated)
+    input  wire                  clk,
+    input  wire                  rst_n,
+    input  wire [3:0]            key_code,
+    input  wire                  key_pulse,
+    output reg [RESULT_WIDTH-1:0] result = 0,
+    output reg                  result_valid = 0,
+    output reg                  result_pulse = 0,
+    output wire                 overflow
 );
 
-    // internal registers
-    logic [RESULT_WIDTH-1:0] total_reg;
-    logic [RESULT_WIDTH-1:0] curr_reg;
-    logic result_valid_reg;
-    logic result_pulse_reg;
-    logic overflow_reg;
+    reg [RESULT_WIDTH-1:0] current_value = 0;
+    reg [RESULT_WIDTH-1:0] stored_value = 0;
+    reg accumulating = 0;
+    
+    assign overflow = (result >= 10000);
 
-    // local helpers
-    logic [RESULT_WIDTH-1:0] next_curr;
-    logic [RESULT_WIDTH-1:0] next_total;
-    logic [RESULT_WIDTH-1:0] digit_ext;
-    logic is_digit;
-    logic is_add;
-    logic is_equal;
-    logic is_clear;
-
-    assign is_digit = (key_code <= 4'd9);
-    assign is_add   = (key_code == 4'd10);
-    assign is_equal = (key_code == 4'd11);
-    assign is_clear = (key_code == 4'd12);
-
-    // safe extension of digit
-    assign digit_ext = { {(RESULT_WIDTH-4){1'b0}}, key_code }; // key_code <=9 fits
-
-    // sequential logic: consume one-shot key_pulse
-    always_ff @(posedge clk or negedge rst_n) begin
+    always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            total_reg       <= '0;
-            curr_reg        <= '0;
-            result_valid_reg<= 1'b0;
-            result_pulse_reg<= 1'b0;
-            overflow_reg    <= 1'b0;
+            current_value <= 0;
+            stored_value <= 0;
+            result <= 0;
+            result_valid <= 0;
+            result_pulse <= 0;
+            accumulating <= 0;
         end else begin
-            // default clear pulse flag each clock
-            result_pulse_reg <= 1'b0;
-
+            result_pulse <= 0; // Reset pulse cada ciclo
+            
             if (key_pulse) begin
-                if (is_clear) begin
-                    // clear everything
-                    total_reg        <= '0;
-                    curr_reg         <= '0;
-                    result_valid_reg <= 1'b0;
-                    overflow_reg     <= 1'b0;
-                end else if (is_digit) begin
-                    // append decimal digit: curr*10 + digit
-                    // compute tentative next_curr using wider temporary arithmetic
-                    logic [RESULT_WIDTH:0] tmp;
-                    tmp = curr_reg * 10 + digit_ext;
-                    if (tmp >= RESULT_MAX) begin
-                        curr_reg     <= {RESULT_WIDTH{1'b1}} & (RESULT_MAX - 1); // saturate
-                        overflow_reg <= 1'b1;
-                    end else begin
-                        curr_reg <= tmp[RESULT_WIDTH-1:0];
+                case (key_code)
+                    // Dígitos 0-9
+                    4'h0, 4'h1, 4'h2, 4'h3, 4'h4, 
+                    4'h5, 4'h6, 4'h7, 4'h8, 4'h9: begin
+                        if (!accumulating) begin
+                            current_value <= key_code;
+                            accumulating <= 1;
+                        end else begin
+                            current_value <= (current_value * 10) + key_code;
+                        end
+                        result_valid <= 0;
                     end
-                    // entering digits clears previous "result valid" state
-                    result_valid_reg <= 1'b0;
-                end else if (is_add || is_equal) begin
-                    // perform total = total + curr
-                    logic [RESULT_WIDTH:0] tmp_sum;
-                    tmp_sum = total_reg + curr_reg;
-                    if (tmp_sum >= RESULT_MAX) begin
-                        total_reg    <= {RESULT_WIDTH{1'b1}} & (RESULT_MAX - 1); // saturate
-                        overflow_reg <= 1'b1;
-                    end else begin
-                        total_reg <= tmp_sum[RESULT_WIDTH-1:0];
+                    
+                    // ADD
+                    4'd10: begin
+                        stored_value <= current_value;
+                        current_value <= 0;
+                        accumulating <= 0;
+                        result_valid <= 1;
+                        result_pulse <= 1;
                     end
-                    // reset current operand
-                    curr_reg <= '0;
-                    // produce result output
-                    result_valid_reg <= 1'b1;
-                    result_pulse_reg <= 1'b1;
-                end
-                // other key_codes ignored
+                    
+                    // EQUAL
+                    4'd11: begin
+                        result <= stored_value + current_value;
+                        current_value <= 0;
+                        stored_value <= 0;
+                        accumulating <= 0;
+                        result_valid <= 1;
+                        result_pulse <= 1;
+                    end
+                    
+                    // CLEAR
+                    4'd12: begin
+                        current_value <= 0;
+                        stored_value <= 0;
+                        result <= 0;
+                        accumulating <= 0;
+                        result_valid <= 0;
+                    end
+                endcase
             end
-            // otherwise no change
         end
     end
-
-    // outputs
-    assign result       = total_reg;
-    assign result_valid = result_valid_reg;
-    assign result_pulse = result_pulse_reg;
-    assign overflow     = overflow_reg;
 
 endmodule

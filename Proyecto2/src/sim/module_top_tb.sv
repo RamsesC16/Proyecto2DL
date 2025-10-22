@@ -1,47 +1,97 @@
 `timescale 1ns/1ps
 
-module module_top_tb;
-    logic clk;
-    logic [3:0] columnas;
-    logic [3:0] filas_raw;
-    logic [3:0] a;
-    logic [6:0] d;
-    logic [3:0] led;
+module tb_calculadora();
+    reg clk;
+    reg rst_n;
+    reg [3:0] key_code;
+    reg key_pulse;
     
-    module_top uut (
+    wire [13:0] resultado;
+    wire result_valid;
+    wire result_pulse;
+    wire overflow;
+    
+    // Instanciar el módulo suma
+    module_suma u_suma (
         .clk(clk),
-        .columnas(columnas),
-        .filas_raw(filas_raw),
-        .a(a),
-        .d(d),
-        .led(led)
+        .rst_n(rst_n),
+        .key_code(key_code),
+        .key_pulse(key_pulse),
+        .result(resultado),
+        .result_valid(result_valid),
+        .result_pulse(result_pulse),
+        .overflow(overflow)
     );
     
-    always #18.519 clk = ~clk;
+    // Generador de reloj
+    always #5 clk = ~clk;
+    
+    // Tareas para simular teclas
+    task press_key;
+        input [3:0] k;
+        begin
+            key_code = k;
+            key_pulse = 1'b1;
+            @(posedge clk);
+            key_pulse = 1'b0;
+            #100; // Esperar entre teclas
+        end
+    endtask
     
     initial begin
-        $display("TEST CON RESET FIX");
-        
-        // Inicialización
+        // Inicializar
         clk = 0;
-        columnas = 4'b1111;
+        rst_n = 0;
+        key_code = 0;
+        key_pulse = 0;
         
-        #50000;
-        $display("[%0t] Inicio - Filas: %b", $time, filas_raw);
+        // Reset
+        #20;
+        rst_n = 1;
+        #100;
         
-        #100000;
-        $display("[%0t] Despues de 100us - Filas: %b", $time, filas_raw);
+        $display("=== TEST 1: 15 + 27 ===");
         
-        #500000;
-        $display("[%0t] Despues de 500us - Filas: %b, Anodos: %b", $time, filas_raw, a);
+        // Ingresar 15
+        press_key(4'h1); // 1
+        press_key(4'h5); // 5
+        $display("Ingresado: 15");
         
-        // Verificar si el reset funcionó
-        if (filas_raw != 4'b1111) begin
-            $display("✅ RESET FUNCIONA! Filas se escanean");
-        end else begin
-            $display("❌ Reset NO funciona");
-        end
+        // Presionar ADD
+        press_key(4'd10); // ADD
+        $display("Presionado ADD");
         
+        // Ingresar 27
+        press_key(4'h2); // 2
+        press_key(4'h7); // 7
+        $display("Ingresado: 27");
+        
+        // Presionar EQUAL
+        press_key(4'd11); // EQUAL
+        $display("Presionado EQUAL");
+        
+        // Esperar resultado
+        #200;
+        $display("Resultado esperado: 42, Obtenido: %d", resultado);
+        
+        #100;
+        
+        $display("=== TEST 2: CLEAR ===");
+        press_key(4'd12); // CLEAR
+        $display("Presionado CLEAR");
+        #100;
+        $display("Resultado después de CLEAR: %d", resultado);
+        
+        #100;
+        $display("=== SIMULACIÓN COMPLETADA ===");
         $finish;
     end
+    
+    // Monitorear cambios
+    always @(posedge clk) begin
+        if (result_pulse) begin
+            $display("[%0t] Resultado calculado: %d", $time, resultado);
+        end
+    end
+
 endmodule
