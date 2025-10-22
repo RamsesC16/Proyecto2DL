@@ -1,110 +1,101 @@
-module module_suma (
-    input  logic clk,
-    input  logic [3:0] sample,  // Valor del teclado
-    output logic [15:0] cdu,    // Resultado en BCD: M C D U (4 bits cada uno)
-    output logic [3:0] debug
+// ...existing code...
+module module_suma #(
+    parameter int RESULT_WIDTH = 14,    // bits for result (14 bits -> up to 16383), adjust if need >9999
+    parameter int RESULT_MAX   = 10000  // decimal cap (e.g. 10000 => max displayable 0..9999)
+)(
+    input  logic                  clk,
+    input  logic                  rst_n,
+    input  logic [3:0]            key_code,   // 0..9 digits, 10=ADD,11=EQUAL,12=CLEAR
+    input  logic                  key_pulse,  // one-shot per key press (1 clk)
+    output logic [RESULT_WIDTH-1:0] result,    // current total (or last result)
+    output logic                  result_valid, // level: a result is available
+    output logic                  result_pulse, // one-shot when a result is produced (ADD/EQUAL)
+    output logic                  overflow     // high when overflow occurred (saturated)
 );
 
-    typedef enum logic [2:0] {S0, S1, S2, S3, S4, S5, S6} statetype;
-    statetype state = S0;
+    // internal registers
+    logic [RESULT_WIDTH-1:0] total_reg;
+    logic [RESULT_WIDTH-1:0] curr_reg;
+    logic result_valid_reg;
+    logic result_pulse_reg;
+    logic overflow_reg;
 
-    // Variables internas
-    logic [9:0] w1, w2;
-    logic [3:0] sample_A;
-    logic flag;
-    logic [11:0] sum;
-    assign debug = ~state;
+    // local helpers
+    logic [RESULT_WIDTH-1:0] next_curr;
+    logic [RESULT_WIDTH-1:0] next_total;
+    logic [RESULT_WIDTH-1:0] digit_ext;
+    logic is_digit;
+    logic is_add;
+    logic is_equal;
+    logic is_clear;
 
+    assign is_digit = (key_code <= 4'd9);
+    assign is_add   = (key_code == 4'd10);
+    assign is_equal = (key_code == 4'd11);
+    assign is_clear = (key_code == 4'd12);
 
+    // safe extension of digit
+    assign digit_ext = { {(RESULT_WIDTH-4){1'b0}}, key_code }; // key_code <=9 fits
 
-    logic [3:0] unidades1, unidades2, decenas1, decenas2;
-    logic [3:0] centenas1, centenas2;
+    // sequential logic: consume one-shot key_pulse
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            total_reg       <= '0;
+            curr_reg        <= '0;
+            result_valid_reg<= 1'b0;
+            result_pulse_reg<= 1'b0;
+            overflow_reg    <= 1'b0;
+        end else begin
+            // default clear pulse flag each clock
+            result_pulse_reg <= 1'b0;
 
-
-    always_comb begin
-        w1 = (centenas1 * 100) +
-             (decenas1  * 10) +
-             unidades1;
-        w2 = (centenas2 * 100) +
-             (decenas2  * 10) +
-             unidades2;  
-    end
-
-    // Registro de sample y detección de cambio
-    always_ff @(posedge clk) begin
-        sample_A <= sample;
-    end
-
-    assign flag = (sample_A != sample);
-
-    // Máquina de estados
-    always_ff @(posedge clk) begin
-        if (flag && sample != 4'b1111) begin
-            case (state)
-                S0: centenas1 <= sample;
-                S1: decenas1  <= sample;
-                S2: unidades1  <= sample;
-                S3: centenas2 <= sample;
-                S4: decenas2  <= sample;
-                S5: unidades2  <= sample;
-                S6: sum <= w1 + w2;
-            endcase
-
-            case (state)
-                S0: state <= S1;
-                S1: state <= S2;
-                S2: state <= S3;
-                S3: state <= S4;
-                S4: state <= S5;
-                S5: state <= S6;
-                S6: state <= S0;
-                default: state <= S0;
-            endcase
+            if (key_pulse) begin
+                if (is_clear) begin
+                    // clear everything
+                    total_reg        <= '0;
+                    curr_reg         <= '0;
+                    result_valid_reg <= 1'b0;
+                    overflow_reg     <= 1'b0;
+                end else if (is_digit) begin
+                    // append decimal digit: curr*10 + digit
+                    // compute tentative next_curr using wider temporary arithmetic
+                    logic [RESULT_WIDTH:0] tmp;
+                    tmp = curr_reg * 10 + digit_ext;
+                    if (tmp >= RESULT_MAX) begin
+                        curr_reg     <= {RESULT_WIDTH{1'b1}} & (RESULT_MAX - 1); // saturate
+                        overflow_reg <= 1'b1;
+                    end else begin
+                        curr_reg <= tmp[RESULT_WIDTH-1:0];
+                    end
+                    // entering digits clears previous "result valid" state
+                    result_valid_reg <= 1'b0;
+                end else if (is_add || is_equal) begin
+                    // perform total = total + curr
+                    logic [RESULT_WIDTH:0] tmp_sum;
+                    tmp_sum = total_reg + curr_reg;
+                    if (tmp_sum >= RESULT_MAX) begin
+                        total_reg    <= {RESULT_WIDTH{1'b1}} & (RESULT_MAX - 1); // saturate
+                        overflow_reg <= 1'b1;
+                    end else begin
+                        total_reg <= tmp_sum[RESULT_WIDTH-1:0];
+                    end
+                    // reset current operand
+                    curr_reg <= '0;
+                    // produce result output
+                    result_valid_reg <= 1'b1;
+                    result_pulse_reg <= 1'b1;
+                end
+                // other key_codes ignored
+            end
+            // otherwise no change
         end
     end
 
-    bin_to_bcd conv_bcd (
-        .i_bin(sum),
-        .o_bcd(cdu)
-    );
+    // outputs
+    assign result       = total_reg;
+    assign result_valid = result_valid_reg;
+    assign result_pulse = result_pulse_reg;
+    assign overflow     = overflow_reg;
+
 endmodule
-
-
-
-
-
-module bin_to_bcd (
-    input  logic [11:0] i_bin,  // Entrada binaria de 12 bits
-    output logic [15:0] o_bcd   // Salida BCD de 16 bits
-);
-    logic [11:0] bin_shift;  // Registro para el desplazamiento
-    logic [15:0] bcd;        // Registro de salida BCD
-
-
-    integer i;
-    always @(*) begin
-        // Inicialización del registro BCD en 0
-        bcd = 16'd0;  // 16 bits a cero
-        bin_shift = i_bin;
-
-        // Iteración de 12 ciclos (uno por cada bit de la entrada binaria)
-        for (i = 0; i < 12; i = i + 1) begin
-            // Corrige cada dígito BCD si es mayor que 4
-            if (bcd[3:0] > 4)
-                bcd[3:0] = bcd[3:0] + 3;
-            if (bcd[7:4] > 4)
-                bcd[7:4] = bcd[7:4] + 3;
-            if (bcd[11:8] > 4)
-                bcd[11:8] = bcd[11:8] + 3;
-            if (bcd[15:12] > 4)
-                bcd[15:12] = bcd[15:12] + 3;
-
-            // Desplazamiento a la izquierda de bcd y se agrega el bit más significativo de bin_shift
-            bcd = {bcd[14:0], bin_shift[11]};
-            bin_shift = bin_shift << 1;
-        end
-
-        // Asignación de la salida BCD
-        o_bcd = bcd;
-    end
-endmodule
+// ...existing code...

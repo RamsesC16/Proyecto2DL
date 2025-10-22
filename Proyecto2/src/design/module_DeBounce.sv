@@ -1,73 +1,57 @@
-module module_DeBounce (
+module module_DeBounce #(
+    parameter integer STABLE_CYCLES = 1000 // ciclos de reloj que la entrada debe permanecer estable
+)(
     input  logic clk,
-    input  logic n_reset,
-    input  logic button_in,
-    input  logic [3:0] columnas,
-    output logic DB_out,
-    output logic [3:0] columna_presionada
+    input  logic rst_n,     // activo bajo
+    input  logic btn_async, // entrada asíncrona (botón)
+    output logic btn_level, // nivel debounced
+    output logic btn_pulse  // pulso de un ciclo en rising edge debounced
 );
-    parameter int N = 6;                      // ancho del contador de debounce
-    parameter int DEBOUNCE_MAX = (1<<N)-1;   // valor max para considerar estable
-    parameter int MAX_COUNT = 15_000_000;    // retención 1s a 27MHz (ajustar si hace falta)
 
-    // sincronizador de dos etapas
-    logic sync1, sync2;
-
-    // contador de debounce (pequeño)
-    logic [N-1:0] db_cnt;
-
-    // contador de retención (mantener DB_out en 1 por MAX_COUNT ciclos)
-    logic [31:0] hold_cnt;
-    logic active;
-
-    // señales derivadas
-    logic stable_high;
-
-    // combinacional
-    assign stable_high = (sync1 && sync2);
-
-    // sincronizador (dos FF) y debounce / hold logic
-    always_ff @(posedge clk or negedge n_reset) begin
-        if (!n_reset) begin
-            sync1 <= 1'b0;
-            sync2 <= 1'b0;
-            db_cnt <= '0;
-            DB_out <= 1'b0;
-            active <= 1'b0;
-            hold_cnt <= '0;
-            columna_presionada <= 4'b0000;
+    // sincronizador de 2 etapas para mitigar metastabilidad
+    logic sync_ff0, sync_ff1;
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            sync_ff0 <= 1'b0;
+            sync_ff1 <= 1'b0;
         end else begin
-            // sincronizar la entrada asincrona
-            sync1 <= button_in;
-            sync2 <= sync1;
+            sync_ff0 <= btn_async;
+            sync_ff1 <= sync_ff0;
+        end
+    end
 
-            // debounce counter: contar cuando lectura sincronizada = 1
-            if (stable_high && !active) begin
-                if (db_cnt < DEBOUNCE_MAX)
-                    db_cnt <= db_cnt + 1;
+    // contador para estabilidad
+    logic [$clog2(STABLE_CYCLES+1)-1:0] stable_cnt;
+    logic candidate;
+
+    // candidate = valor sincronizado actual
+    assign candidate = sync_ff1;
+
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            stable_cnt <= '0;
+            btn_level  <= 1'b0;
+            btn_pulse  <= 1'b0;
+        end else begin
+            btn_pulse <= 1'b0; // default
+
+            if (candidate == btn_level) begin
+                // si coincide con el nivel actual, reiniciar contador
+                stable_cnt <= '0;
             end else begin
-                db_cnt <= '0;
-            end
-
-            // Si el contador alcanzó el máximo y aún no estamos activos, activamos
-            if ((db_cnt == DEBOUNCE_MAX) && !active) begin
-                DB_out <= 1'b1;
-                active <= 1'b1;
-                hold_cnt <= 32'd0;
-                columna_presionada <= columnas; // capturar columna cuando se confirma tecla estable
-            end
-            // Si ya estamos activos, contamos hasta MAX_COUNT para liberar
-            else if (active) begin
-                if (hold_cnt < MAX_COUNT) begin
-                    hold_cnt <= hold_cnt + 1;
+                // candidato distinto: incrementar contador
+                if (stable_cnt >= STABLE_CYCLES - 1) begin
+                    // se mantuvo estable el tiempo requerido: actualizar nivel
+                    btn_level <= candidate;
+                    stable_cnt <= '0;
+                    // generar pulso solo en transición 0->1
+                    if (candidate == 1'b1)
+                        btn_pulse <= 1'b1;
                 end else begin
-                    DB_out <= 1'b0;
-                    active <= 1'b0;
-                    columna_presionada <= 4'b0000;
-                    hold_cnt <= 32'd0;
-                    db_cnt <= '0;
+                    stable_cnt <= stable_cnt + 1'b1;
                 end
             end
         end
     end
+
 endmodule

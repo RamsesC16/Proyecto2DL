@@ -1,86 +1,154 @@
-`timescale 1ns/1ns
-module module_lecture (
-    input  logic clk,
-    input  logic n_reset,
-    input  logic [3:0] filas_raw,   // entradas del keypad
-    output logic [3:0] columnas,    // salidas que escanean columnas (one-hot)
-    output logic [3:0] sample       // tecla codificada (4 bits) o cero
+// ...existing code...
+module module_lecture #(
+    parameter integer SCAN_CYCLES       = 500,  // ciclos por fila antes de pasar a la siguiente
+    parameter integer SAMPLE_DELAY      = 2,    // ciclos desde drive row hasta muestreo
+    parameter integer DEBOUNCE_SAMPLES  = 6     // muestras consecutivas iguales para aceptar tecla
+)(
+    input  logic        clk,
+    input  logic        rst_n,
+    input  logic [3:0]  cols_in,   // entradas de columnas (pull-ups en HW, activo 0)
+    output logic [3:0]  rows_out,  // filas a manejar (activas low)
+    output logic [3:0]  key_code,  // código de tecla (0..15)
+    output logic        key_valid, // nivel debounced (alguna tecla presionada)
+    output logic        key_pulse  // one-shot al detectarse 0->1 (prioritario)
 );
 
-    // Scanning parameters
-    parameter int CLK_HZ = 27_000_000;
-    parameter int COL_SCAN_HZ = 1000; // cuantas columnas por segundo (ajusta)
-    localparam int CYCLES_PER_STEP = CLK_HZ / (COL_SCAN_HZ * 4);
-
-    logic [$clog2(CYCLES_PER_STEP+1)-1:0] cnt;
-    logic [1:0] cur_col;
-    logic [3:0] filas_db;       // suponiendo que ya tienes un debouncer que genera esto
-    // (si tu DeBounce.sv produce filas_db por columna, integra esa lógica aquí)
-
-    // simple contador para cambiar la columna activa
-    always_ff @(posedge clk or negedge n_reset) begin
-        if (!n_reset) begin
-            cnt <= 0;
-            cur_col <= 0;
+    // sincronizador 2 etapas para las columnas
+    logic [3:0] col_sync0, col_sync1;
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            col_sync0 <= 4'hF;
+            col_sync1 <= 4'hF;
         end else begin
-            if (cnt >= CYCLES_PER_STEP-1) begin
-                cnt <= 0;
-                cur_col <= cur_col + 1;
+            col_sync0 <= cols_in;
+            col_sync1 <= col_sync0;
+        end
+    end
+
+    // escaneo de filas
+    logic [$clog2(SCAN_CYCLES+1)-1:0] scan_cnt;
+    logic [1:0] row_idx;
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            scan_cnt <= '0;
+            row_idx  <= 2'd0;
+        end else begin
+            if (scan_cnt >= SCAN_CYCLES - 1) begin
+                scan_cnt <= '0;
+                row_idx  <= row_idx + 1'b1;
             end else begin
-                cnt <= cnt + 1;
+                scan_cnt <= scan_cnt + 1'b1;
             end
         end
     end
 
-    // generar señales one-hot para columnas (activo alto)
+    // filas activas (one-hot, active low)
     always_comb begin
-        case (cur_col)
-            2'd0: columnas = 4'b0001;
-            2'd1: columnas = 4'b0010;
-            2'd2: columnas = 4'b0100;
-            2'd3: columnas = 4'b1000;
-            default: columnas = 4'b0001;
+        case (row_idx)
+            2'd0: rows_out = 4'b1110;
+            2'd1: rows_out = 4'b1101;
+            2'd2: rows_out = 4'b1011;
+            2'd3: rows_out = 4'b0111;
+            default: rows_out = 4'b1111;
         endcase
     end
 
-    // Debounce: si ya tienes un DeBounce por fila/columna integra aquí
-    // Para ejemplo simple, usamos directamente filas_raw (no ideal)
-    assign filas_db = filas_raw; // reemplaza por la salida de tu debouncer
+    // evento de muestreo
+    logic sample_event;
+    assign sample_event = (scan_cnt == SAMPLE_DELAY);
 
-    // Mapear {columna_activa, filas_db} a un valor 'sample'
-    // IMPORTANTE: ajustar los bits si tus niveles son activos bajos
-    always_ff @(posedge clk or negedge n_reset) begin
-        if (!n_reset) begin
-            sample <= 4'b0000;
+    // helper index
+    function automatic logic [3:0] col_index_of(input logic [3:0] cols);
+        if (cols[0] == 1'b0) col_index_of = 4'd0;
+        else if (cols[1] == 1'b0) col_index_of = 4'd1;
+        else if (cols[2] == 1'b0) col_index_of = 4'd2;
+        else if (cols[3] == 1'b0) col_index_of = 4'd3;
+        else col_index_of = 4'd0;
+    endfunction
+
+    // Debounce simple por candidato (muestras por fila)
+    logic [15:0] latched_keys;            // 1 = pressed (debounced)
+    logic [3:0]  prev_candidate_index;
+    logic        prev_candidate_active;
+    logic [$clog2(DEBOUNCE_SAMPLES+1)-1:0] sample_stable_cnt;
+    logic [3:0]  curr_candidate_index;
+    logic        curr_candidate_active;
+    logic        key_pulse_reg;
+
+    // tomar muestra del candidato en cada sample_event
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            prev_candidate_index <= 4'd0;
+            prev_candidate_active <= 1'b0;
+            sample_stable_cnt <= '0;
+            latched_keys <= '0;
+            key_pulse_reg <= 1'b0;
+            curr_candidate_index <= 4'd0;
+            curr_candidate_active <= 1'b0;
         end else begin
-            unique case ({columnas, filas_db})
-                // columna 0 (0001):
-                8'b0001_0001: sample <= 4'h7; // ejemplo: fila0 en columna0 => '7' (ajusta)
-                8'b0001_0010: sample <= 4'h4;
-                8'b0001_0100: sample <= 4'h1;
-                8'b0001_1000: sample <= 4'hE; // '*' por ejemplo
+            key_pulse_reg <= 1'b0;
 
-                // columna 1 (0010):
-                8'b0010_0001: sample <= 4'h8;
-                8'b0010_0010: sample <= 4'h5;
-                8'b0010_0100: sample <= 4'h2;
-                8'b0010_1000: sample <= 4'h0;
+            if (sample_event) begin
+                // leer probe sincronizada
+                logic [3:0] sampled_cols;
+                sampled_cols = col_sync1;
 
-                // columna 2 (0100):
-                8'b0100_0001: sample <= 4'h9;
-                8'b0100_0010: sample <= 4'h6;
-                8'b0100_0100: sample <= 4'h3;
-                8'b0100_1000: sample <= 4'hF; // '#'
+                if (sampled_cols != 4'hF) begin
+                    curr_candidate_active = 1'b1;
+                    curr_candidate_index  = {row_idx, col_index_of(sampled_cols)};
+                end else begin
+                    curr_candidate_active = 1'b0;
+                    curr_candidate_index  = 4'd0;
+                end
 
-                // columna 3 (1000):
-                8'b1000_0001: sample <= 4'hA; // A,B,C,D u otro mapeo
-                8'b1000_0010: sample <= 4'hB;
-                8'b1000_0100: sample <= 4'hC;
-                8'b1000_1000: sample <= 4'hD;
+                // comparar con la muestra previa
+                if (curr_candidate_active == prev_candidate_active && curr_candidate_index == prev_candidate_index) begin
+                    if (sample_stable_cnt < DEBOUNCE_SAMPLES) sample_stable_cnt <= sample_stable_cnt + 1'b1;
+                end else begin
+                    prev_candidate_active <= curr_candidate_active;
+                    prev_candidate_index  <= curr_candidate_index;
+                    sample_stable_cnt     <= 1'b1;
+                end
 
-                default: sample <= 4'b0000;
-            endcase
+                // si estable por suficientes muestras, actualizar estado latched
+                if (sample_stable_cnt >= DEBOUNCE_SAMPLES) begin
+                    // actualizar la tecla correspondiente
+                    if (curr_candidate_active) begin
+                        // marcar presionada
+                        if (!latched_keys[curr_candidate_index]) begin
+                            latched_keys[curr_candidate_index] <= 1'b1;
+                            key_pulse_reg <= 1'b1; // 0->1
+                        end
+                    end else begin
+                        // liberar: si estaba marcada, limpiarla
+                        if (latched_keys[prev_candidate_index]) begin
+                            latched_keys[prev_candidate_index] <= 1'b0;
+                        end
+                    end
+                    // saturar contador
+                    sample_stable_cnt <= DEBOUNCE_SAMPLES;
+                end
+            end
         end
     end
 
+    // salidas
+    assign key_pulse = key_pulse_reg;
+    assign key_valid = |latched_keys;
+
+    // prioridad: primer índice con latched_keys==1
+    logic [3:0] found_code;
+    integer i;
+    always_comb begin
+        found_code = 4'd0;
+        for (i = 0; i < 16; i = i + 1) begin
+            if (latched_keys[i]) begin
+                found_code = i[3:0];
+                i = 16;
+            end
+        end
+    end
+    assign key_code = found_code;
+
 endmodule
+// ...existing code...
