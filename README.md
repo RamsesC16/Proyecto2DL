@@ -1,4 +1,4 @@
-# Proyecto 2 Diselo Lógico.
+# Proyecto 2 Diseño Lógico.
 Integrantes: Julio David Quesada Hernández, Ramses Cortes Torres. 
 
 ## 1. Abreviatura y Definiciones:
@@ -633,6 +633,6 @@ Testbench:
 ## 4.1 Contadores Sincrónicos:  
 ## 4.2 Construcción de un cerrojo Set-Reset con compuertas NAND: 
 ## 5. Problemas encontrados durante la implementación:
-Al realizar la implementación de este proyecto nos percatamos que tendríamos que encontrar un balance entre rigidez y permitividad del DeBouncer, ya que si no le poníamos tanta rigidez, el rebote ocasionaría que las vibraciones al presionar alguna tecla del teclado accionara otra, de igual manera, si elegíamos una mayor rigidez para el DeBouncer, a la hora de presionar una tecla no iba a permitir que esta se viera en el 7 segmentos. Esto ocasionó que al presionar algunas teclas del teclado se presentarás otros números (a veces) en el 7 segmentos. El segundo problema se presentó en el módulo de suma, ya que no logramos implementar el mismo de manera física, el testbench sí funcionó.
+Durante la implementación del proyecto, se identificó que era necesario encontrar un equilibrio adecuado en el DeBouncer entre rigidez y sensibilidad. Si el DeBouncer era demasiado sensible, el rebote de las teclas provocaba que al presionar una tecla se registrara otra de manera incorrecta. Por otro lado, si se configuraba con demasiada rigidez, algunas pulsaciones no se registraban, impidiendo que el valor apareciera en los displays de 7 segmentos. Como resultado, en ciertas ocasiones al presionar algunas teclas se mostraban números incorrectos en los displays. Además, se presentó un segundo problema con el módulo de suma: aunque funcionaba correctamente en simulación a través del testbench, no fue posible implementarlo de manera física en la FPGA.
 ## 6. Análisis de Potencia: 
 ## 7. Bitácoras: 
