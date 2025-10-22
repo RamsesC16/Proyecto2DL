@@ -1,4 +1,0 @@
-- Fix add-3 positions in S_CONVERT to apply to upper BCD nibbles (RESULT_WIDTH+ offsets)
-- Change next_state condition to if (dd_cnt >= RESULT_WIDTH) next_state = S_READY
-- Fix BCD capture in S_READY to use upper nibble positions
-- Run simulation to verify fixes
