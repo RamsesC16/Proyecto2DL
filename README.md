@@ -23,6 +23,7 @@ Funcionamiento: El módulo DeBounce se encarga de eliminar el rebote que ocurre 
 
 Para evitarlo, el módulo usa un pequeño sincronizador de dos etapas que alinea la señal del botón con el reloj del sistema y ayuda a evitar errores por metastabilidad. Luego, cuenta cuántos ciclos seguidos la señal se mantiene estable. Si la entrada se mantiene igual durante el tiempo definido (STABLE_CYCLES), el módulo actualiza su salida y, si detecta un cambio de 0 a 1, genera un pulso de un solo ciclo.
 Código: 
+
 module module_DeBounce #(
     parameter integer STABLE_CYCLES = 1000 // ciclos de reloj que la entrada debe permanecer estable
 )(
