@@ -172,12 +172,14 @@ module module_disp_controller #(
 
 endmodule
 Testbench:
+
 TEST MODULO DISP_CONTROLLER
 
 Segmentos: 1001111, Anodos: 1101
 Segmentos: 1111101, Anodos: 1011
 Test completado.
 ../sim/module_disp_controller_tb.sv:44: $finish called at 2020000 (1ps)
+
 ## 3.3 Módulo disp_dec
 Funcionamiento: El módulo disp_dec se encarga de convertir un número de 4 bits en la señal correspondiente para un display de siete segmentos. Toma la entrada binaria y, mediante una estructura case, activa los segmentos correctos para formar el dígito decimal correspondiente. Cada combinación de segmentos representa un número del 0 al 9, mientras que cualquier otro valor apaga todos los segmentos. De esta manera, este módulo actúa como un decodificador que traduce valores binarios en la representación visual adecuada para los displays de siete segmentos.
 Código:
