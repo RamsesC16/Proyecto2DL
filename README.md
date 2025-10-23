@@ -884,3 +884,4 @@ Durante la implementación del proyecto, se identificó que era necesario encont
      OBUF                           15
      VCC                             1
 ## 7. Bitácoras: 
+[📘 Ver Bitácora de Julio](https://github.com/RamsesC16/Proyecto2DL/blob/main/BITÁCORAS/BITÁCORA_JULIO.pdf)
