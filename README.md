@@ -292,7 +292,9 @@ module module_lecture(
     assign sample = sample_reg;
 
 endmodule 
+
 Testbench:
+
 ===========================================
 === TESTBENCH MODULE_LECTURE (TECLADO) ===
 ===========================================
