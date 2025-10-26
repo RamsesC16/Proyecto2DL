@@ -890,4 +890,4 @@ Durante la implementación del proyecto, se identificó que era necesario encont
      VCC                             1
 ## 7. Bitácoras: 
 [📘 Ver Bitácora de Julio](https://github.com/RamsesC16/Proyecto2DL/blob/main/BITÁCORAS/BITÁCORA_JULIO.pdf)
-[📘 Ver Bitácora de Ramsés](https://github.com/RamsesC16/Proyecto2DL/blob/main/BITÁCORAS/BITÁCORA_Ramsés.pdf)
+[📘 Ver Bitácora de Ramsés](https://github.com/RamsesC16/Proyecto2DL/blob/main/BITÁCORAS/BITÁCORA_RAMSÉS.pdf)
